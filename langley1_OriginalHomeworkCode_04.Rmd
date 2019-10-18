@@ -1,0 +1,63 @@
+---
+title: "langley1_OriginalHomeworkCode_04"
+output: html_document
+---
+***
+
+### HW 4: "What's your Malfunction?"
+
+***
+
+Loading in the Kamilar and Cooper Dataset
+```{r}
+library(curl)
+KC <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN597_Fall19/KamilarAndCooperData.csv")
+KC <- read.csv(KC, header = TRUE, sep = ",", stringsAsFactors = FALSE)
+head(KC)
+names(KC)
+```
+
+Assigning variables to the Data columns I want to look at
+```{r}
+max_l<- KC$MaxLongevity_m
+max_l
+mean_bs<- KC$Brain_Size_Species_Mean
+mean_bs
+```
+
+Fitting these variables to a linear regression
+```{r}
+lm1<- lm(data=KC, max_l ~ mean_bs)
+lm1
+head(lm1$model)
+```
+
+Using ggplot to create a scatterplot with fitted line and lm equation 
+```{r}
+library(ggplot2)
+
+plot1 <- ggplot(data = KC, aes(x = mean_bs, y = max_l))
+plot1 <- plot1 + labs(x= "Mean Brain Size", y= "Longevity")
+plot1 <- plot1 + geom_point()
+plot1 <- plot1 + geom_smooth(method = "lm", formula = y ~ x)
+plot1 <- plot1 + geom_text(aes(label = "y%==%1.22%*%x + 248.952", x=200, y=800), parse = TRUE, check_overlap = TRUE, size= 3) #There is probably a better way to add in the equation, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+plot1
+```
+
+Now doing it over again for log(longevity) and log(brain size)
+```{r}
+lm2<- lm(data=KC, log(max_l) ~ log(mean_bs))
+lm2
+head(lm2$model)
+```
+
+Scatterplot with equation 
+```{r}
+plot2 <- ggplot(data = KC, aes(x = log(mean_bs), y = log(max_l)))
+plot2 <- plot2 + labs(x= "Log(Mean Brain Size)", y= "Log(Longevity)")
+plot2 <- plot2 + geom_point()
+plot2 <- plot2 + geom_smooth(method = "lm", formula = y ~ x)
+plot2 <- plot2 + geom_text(aes(label = "y%==%0.234%*%x + 4.879", x=2.5, y=7), parse = TRUE, check_overlap = TRUE, size= 6) #There is probably a better way to add in the equation, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+plot2
+```
+
