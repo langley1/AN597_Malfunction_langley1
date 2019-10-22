@@ -25,11 +25,78 @@ mean_bs<- KC$Brain_Size_Species_Mean
 mean_bs
 ```
 
+***
+
+Part 1: Write a simple R function, Z.prop.test(), that can perform one- or two-sample Z-tests for proportion data
+
+***
+
+```{r}
+p1<- 0.70
+q<- 1-p1
+n<- 100
+p0<- 0.50
+p2<- NULL
+n2<- NULL
+
+z<- (p1 - p0)/(sqrt(p1 * q/ n))
+z
+
+
+bro<- function(x) {ifelse (x=="bro", "bro", "*blank stare*")}
+bro("bro")    
+    
+    
+    "bro", else {
+    "*blank stare*"
+}
+    
+}
+
+
+ztest<- function(m,sem,alpha) {}
+
+function(p1, p0, n1, n2=NULL, p2=NULL, a=0.05, alternative = "two.sided",)
+{
+    if (alternative == "two.sided")
+        return((p1 - p0)/(sqrt(p1 * q/ n1)))
+    else if (alternative == "less")
+        return()
+    else if (alternative == "greater")
+        return()
+    m<- mean(x)
+    sd<- sd(x)
+    sem <- sd/sqrt(length(x))
+    sem
+
+
+lower <- m - qnorm(1 - a/2) * sem  # (1-alpha)/2 each in the upper and lower tails of the distribution
+upper <- m + qnorm(1 - a/2) * sem  # (1-alpha)/2 each in the upper and lower tails of the distribution
+ci_norm <- c(lower, upper)
+ci_norm
+
+
+}
+```
+
+edit(lm) and look at this function, use the same layout!!!
+
+
+
+***
+
+## Part 2: Longevity and Brain Size Linear Regression
+
+***
+
+# Question 1: Fit the regression model and, using {ggplot2}, produce a scatterplot with the fitted line superimposed upon the data. Append the the fitted model equation to your plot 
+
 Fitting these variables to a linear regression
 ```{r}
 lm1<- lm(data=KC, max_l ~ mean_bs)
 lm1
 head(lm1$model)
+summary(lm1)
 ```
 
 Using ggplot to create a scatterplot with fitted line and lm equation 
@@ -39,25 +106,153 @@ library(ggplot2)
 plot1 <- ggplot(data = KC, aes(x = mean_bs, y = max_l))
 plot1 <- plot1 + labs(x= "Mean Brain Size", y= "Longevity")
 plot1 <- plot1 + geom_point()
-plot1 <- plot1 + geom_smooth(method = "lm", formula = y ~ x)
-plot1 <- plot1 + geom_text(aes(label = "y%==%1.22%*%x + 248.952", x=200, y=800), parse = TRUE, check_overlap = TRUE, size= 3) #There is probably a better way to add in the equation, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+plot1 <- plot1 + geom_smooth(method = "lm", formula = y ~ x, se=FALSE) #geom_smooth puts in 95% confidence intervals automatically into the graph, by setting se = F, you can remove these CI (I'm removing them because the question doesn't specfically ask for them)
+plot1 <- plot1 + geom_text(aes(label = "y%==%1.22%*%x + 248.952", x=200, y=800), parse = TRUE, check_overlap = TRUE, size= 5) #I used ?plotmath to see the appropriate syntax to use in order to write out the equation in the label() function
 plot1
+
+#There is probably a better way to add in the equation, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
 ```
 
 Now doing it over again for log(longevity) and log(brain size)
 ```{r}
 lm2<- lm(data=KC, log(max_l) ~ log(mean_bs))
-lm2
+lm2 
 head(lm2$model)
+summary(lm2)
 ```
 
-Scatterplot with equation 
+Scatterplot with equation for log LR
 ```{r}
 plot2 <- ggplot(data = KC, aes(x = log(mean_bs), y = log(max_l)))
 plot2 <- plot2 + labs(x= "Log(Mean Brain Size)", y= "Log(Longevity)")
 plot2 <- plot2 + geom_point()
-plot2 <- plot2 + geom_smooth(method = "lm", formula = y ~ x)
-plot2 <- plot2 + geom_text(aes(label = "y%==%0.234%*%x + 4.879", x=2.5, y=7), parse = TRUE, check_overlap = TRUE, size= 6) #There is probably a better way to add in the equation, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+plot2 <- plot2 + geom_smooth(method = "lm", formula = y ~ x, se = FALSE) #geom_smooth puts in 95% confidence intervals automatically into the graph, by setting se = F, you can remove these CI
+plot2 <- plot2 + geom_text(aes(label = "y%==%0.234%*%x + 4.879", x=2.5, y=7), parse = TRUE, check_overlap = TRUE, size= 6)
 plot2
 ```
 
+# Question 2: Identify and interpret the point estimate of the slope (β1), as well as the outcome of the test associated with the hypotheses H0: β1 = 0; HA: β1 ≠ 0. Also, find a 90 percent CI for the slope (β1) parameter.
+
+The point estimate of the slope
+```{r}
+summary(lm1)
+slope #1.2180
+intercepts #248.952
+
+#My interpretation: for every added month to someone's life, their brain size is 1.218 grams bigger on average; 248.952 months of the average person's life doesn't depend on their mean brain size (?)
+
+#H0: β1 = 0 --> x= 0, y= 248.952
+#HA: β1 ≠ 0 --> 
+
+lm1_ci<- confint(lm1, level = 0.90)
+lm1_ci #slope: 1.035571, 1.40041
+```
+
+For the log linear regression
+```{r}
+summary(lm2)
+slope #0.23415
+intercepts #4.87895
+
+lm2_ci<- confint(lm2, level = 0.90)
+lm2_ci #slope: 0.2046, 0.2637
+```
+
+# Question 3: Using your model, add lines for the 90 percent confidence and prediction interval bands on the plot and add a legend to differentiate between the lines.
+
+```{r}
+###I dont think this is right.... delete this chunk!?
+df<- data.frame(cbind(KC$Brain_Size_Species_Mean, KC$MaxLongevity_m)) #making my lm1 into a data frame so that I can rename the column names
+head(df)
+
+names(df)<- c("mean_bs", "max_l") #changing the column names
+head(df)
+
+df<- cbind(df, lm1_pi)
+head(df)
+
+ci_df<- data.frame(cbind(confint(lm1, level = 0.90)))
+head(ci_df)
+
+lm1_pi<- predict(lm1, interval = "prediction", level = 0.90)
+lm1_pi
+```
+
+
+```{r}
+lm1_pi <- predict(lm1, newdata = data.frame(mean_bs = KC$Brain_Size_Species_Mean), interval = "prediction", level = 0.90)  # for a vector of mean_bs values
+head(lm1_pi)
+
+nrow(lm1_pi)
+nrow(KC) #checking the number of rows in these to make sure they're the same, the cbind() in my next line won't work if they have different number of rows
+
+new_df<- cbind(KC, lm1_pi) #binding my main data object KC with my new lm1_pi variable
+new_df
+
+plot3<- ggplot(new_df, aes(mean_bs, max_l))+
+    geom_point() +
+    labs(x= "Mean Brain Size", y= "Longevity") +
+    geom_line(aes(y=lwr), color = "red", linetype = "dashed")+
+    geom_line(aes(y=upr), color = "red", linetype = "dashed")+
+    geom_smooth(method=lm, level = 0.90)+ #geom_smooth automatically puts in 95% CI so I need to change it to 90%
+    theme(legend.position = c(0.95, 0.95)) #there still is no legend...
+plot3
+```
+
+Now doing it for my log linear regression
+```{r}
+lm2_pi <- predict(lm2, newdata = data.frame(mean_bs = KC$Brain_Size_Species_Mean), interval = "prediction", level = 0.90)  # for a vector of mean_bs values
+head(lm2_pi)
+
+nrow(lm2_pi)
+nrow(KC) #checking the number of rows in these to make sure they're the same, the cbind() in my next line won't work if they have different number of rows
+
+new_df_log<- cbind(KC, lm2_pi) #binding my main data object KC with my new lm1_pi variable
+
+plot4<- ggplot(new_df_log, aes(mean_bs, max_l))+
+    geom_point()+
+    labs(x= "Log(Mean Brain Size)", y= "Log(Longevity)") +
+    geom_line(aes(y=lwr), color = "blue", linetype = "dashed")+
+    geom_line(aes(y=upr), color = "blue", linetype = "dashed")+
+    geom_smooth(method=lm, level = 0.90) #geom_smooth automatically puts in 95% CI so I need to change it to 90%
+plot4 
+```
+
+
+
+
+```{r}
+plot3 <- ggplot(data = KC, aes(x = mean_bs, y = max_l))
+plot3 <- plot3 + labs(x= "Mean Brain Size", y= "Longevity")
+plot3 <- plot3 + geom_point(alpha = 1/2)
+plot3 <- plot3 + geom_line(aes(x = mean_bs, y = CIfit), colour = "black")
+g <- g + geom_line(aes(x = mean_bs, y = lm1_ci), colour = "blue")
+g <- g + geom_line(aes(x = mean_bs, y = CIupr), colour = "blue")
+
+
+g <- ggplot(data = KC, aes(x = x, y = y))
+g <- g + geom_point(alpha = 1/2)
+g <- g + geom_line(aes(x = x, y = CIfit), colour = "black")
+g <- g + geom_line(aes(x = x, y = CIlwr), colour = "blue")
+g <- g + geom_line(aes(x = x, y = CIupr), colour = "blue")
+g
+```
+
+# Question 4: Produce a point estimate and associated 90 percent PI for the longevity of a species whose brain weight is 800 gm. Do you trust the model to predict observations accurately for this value of the explanatory variable? Why or why not?
+
+```{r}
+new.dat <- data.frame(mean_bs=800)
+predict(lm1, newdata = new.dat, interval = 'predict', level = 0.90)
+#point estimate = 1223.345
+#lower/upper = 1021.805, 1424.884
+```
+
+***
+
+## My Challenges
+
+***
+
+#Part 2, Question 1: There is probably a better way to add the equation to the graph, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+#Part 2, Question 3: The prediction intervals for my log LR do not show up nicely on my plot, I'm not sure why
+#Part 2, Question 3: adding in a legend to differentiate between prediction intervals and confidence intervals
