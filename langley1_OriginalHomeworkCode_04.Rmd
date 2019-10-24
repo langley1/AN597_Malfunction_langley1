@@ -27,61 +27,50 @@ mean_bs
 
 ***
 
-Part 1: Write a simple R function, Z.prop.test(), that can perform one- or two-sample Z-tests for proportion data
+## Part 1: Write a simple R function, Z.prop.test(), that can perform one- or two-sample Z-tests for proportion data
 
 ***
 
 ```{r}
-p1<- 0.70
-q<- 1-p1
-n<- 100
-p0<- 0.50
-p2<- NULL
-n2<- NULL
-
-z<- (p1 - p0)/(sqrt(p1 * q/ n))
-z
-
-
-bro<- function(x) {ifelse (x=="bro", "bro", "*blank stare*")}
-bro("bro")    
-    
-    
-    "bro", else {
-    "*blank stare*"
-}
-    
-}
-
-
-ztest<- function(m,sem,alpha) {}
-
-function(p1, p0, n1, n2=NULL, p2=NULL, a=0.05, alternative = "two.sided",)
+z.prop.test<- function(p1, p0, n1, n2=NULL, p2=NULL, a=0.05, alternative = "two.sided", norm.distri.1 = "TRUE", norm.distri.2 = "TRUE", conf.level=0.95)
 {
-    if (alternative == "two.sided")
-        return((p1 - p0)/(sqrt(p1 * q/ n1)))
-    else if (alternative == "less")
-        return()
-    else if (alternative == "greater")
-        return()
-    m<- mean(x)
-    sd<- sd(x)
-    sem <- sd/sqrt(length(x))
-    sem
-
-
-lower <- m - qnorm(1 - a/2) * sem  # (1-alpha)/2 each in the upper and lower tails of the distribution
-upper <- m + qnorm(1 - a/2) * sem  # (1-alpha)/2 each in the upper and lower tails of the distribution
-ci_norm <- c(lower, upper)
-ci_norm
-
-
+    q<- 1-p1
+    z.one.samp<- (p1 - p0)/(sqrt(p1 * q/ n1)) #The formula for a one sampled test
+    z.two.samp<- ((p1 - p2) - 0)/(sqrt(sd(p1)^2/n1)+(sd(p2)^2/n2)) #The formula for a two sampled       test
+    z = qnorm(1-a/2) #needed for my confidence interval formula
+    conf.int<- p1 + c(-1,1)*z*sqrt(p1*(1-p1)/n)
+    if (alternative == "two.sided"){
+        return(z.one.samp)
+    } 
+    else if (alternative == "less" & p2 != "NULL" &n2 != "NULL"){
+        return(z.two.samp) #should this p1 and p2 be means??
+    } 
+    else if (alternative == "greater" & p2 != "NULL" &n2 != "NULL"){
+        return(z.two.samp)
+    } 
+    if (conf.level == 0.95){
+        return(conf.int)
+    }
+    if (n1*p1 >5 & n1*(1-p1) >5 & p2 == "NULL" & n2 == "NULL"){
+        return(z.one.samp)
+    } 
+    if (n1*p1 >5 & n1*(1-p1) >5 & p2 != "NULL" & n2 != "NULL"){
+        return(z.two.samp)
+    } 
+    if(n1*p1 < 5 & n1*(1-p1) < 5){
+        return(warning("normal distribution violated")) #I can't get this warning to work...
+    }  
+        
 }
+
+
+TEST<- z.prop.test(p1=0.70, p0=.50, n1=100)
+TEST #No idea if this is right, my gut tells me its not
+Test2<- z.prop.test(p1=0.70, p0=0.50, n1=100, n2=500, p2=0.30, alternative = "less", conf.level = 0.95)
+Test2 #Got an "NA" for this one...
+Test3<- z.prop.test(p1=0.70, p0=0.50, n1=2) #setting my valules to purposefully violate the normal distribution in order to try to get the warning message, but it doesn't work!!
+Test3
 ```
-
-edit(lm) and look at this function, use the same layout!!!
-
-
 
 ***
 
@@ -136,8 +125,8 @@ plot2
 The point estimate of the slope
 ```{r}
 summary(lm1)
-slope #1.2180
-intercepts #248.952
+#slope = 1.2180
+# intercept = #248.952
 
 #My interpretation: for every added month to someone's life, their brain size is 1.218 grams bigger on average; 248.952 months of the average person's life doesn't depend on their mean brain size (?)
 
@@ -161,26 +150,7 @@ lm2_ci #slope: 0.2046, 0.2637
 # Question 3: Using your model, add lines for the 90 percent confidence and prediction interval bands on the plot and add a legend to differentiate between the lines.
 
 ```{r}
-###I dont think this is right.... delete this chunk!?
-df<- data.frame(cbind(KC$Brain_Size_Species_Mean, KC$MaxLongevity_m)) #making my lm1 into a data frame so that I can rename the column names
-head(df)
-
-names(df)<- c("mean_bs", "max_l") #changing the column names
-head(df)
-
-df<- cbind(df, lm1_pi)
-head(df)
-
-ci_df<- data.frame(cbind(confint(lm1, level = 0.90)))
-head(ci_df)
-
-lm1_pi<- predict(lm1, interval = "prediction", level = 0.90)
-lm1_pi
-```
-
-
-```{r}
-lm1_pi <- predict(lm1, newdata = data.frame(mean_bs = KC$Brain_Size_Species_Mean), interval = "prediction", level = 0.90)  # for a vector of mean_bs values
+lm1_pi <- predict(lm1, newdata = data.frame(mean_bs = KC$Brain_Size_Species_Mean), interval = "prediction", level = 0.90)  #for a vector of mean_bs values
 head(lm1_pi)
 
 nrow(lm1_pi)
@@ -218,26 +188,6 @@ plot4<- ggplot(new_df_log, aes(mean_bs, max_l))+
 plot4 
 ```
 
-
-
-
-```{r}
-plot3 <- ggplot(data = KC, aes(x = mean_bs, y = max_l))
-plot3 <- plot3 + labs(x= "Mean Brain Size", y= "Longevity")
-plot3 <- plot3 + geom_point(alpha = 1/2)
-plot3 <- plot3 + geom_line(aes(x = mean_bs, y = CIfit), colour = "black")
-g <- g + geom_line(aes(x = mean_bs, y = lm1_ci), colour = "blue")
-g <- g + geom_line(aes(x = mean_bs, y = CIupr), colour = "blue")
-
-
-g <- ggplot(data = KC, aes(x = x, y = y))
-g <- g + geom_point(alpha = 1/2)
-g <- g + geom_line(aes(x = x, y = CIfit), colour = "black")
-g <- g + geom_line(aes(x = x, y = CIlwr), colour = "blue")
-g <- g + geom_line(aes(x = x, y = CIupr), colour = "blue")
-g
-```
-
 # Question 4: Produce a point estimate and associated 90 percent PI for the longevity of a species whose brain weight is 800 gm. Do you trust the model to predict observations accurately for this value of the explanatory variable? Why or why not?
 
 ```{r}
@@ -245,6 +195,9 @@ new.dat <- data.frame(mean_bs=800)
 predict(lm1, newdata = new.dat, interval = 'predict', level = 0.90)
 #point estimate = 1223.345
 #lower/upper = 1021.805, 1424.884
+
+#The prediction intervals are always going to be wider than the confidence intervals. They are predicting the range for longevity when mean brain size = 800 grams. The value for longevity when brain size = 800 grams will fall in this range 90% of the time. 
+
 ```
 
 ***
@@ -253,6 +206,7 @@ predict(lm1, newdata = new.dat, interval = 'predict', level = 0.90)
 
 ***
 
-#Part 2, Question 1: There is probably a better way to add the equation to the graph, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
-#Part 2, Question 3: The prediction intervals for my log LR do not show up nicely on my plot, I'm not sure why
-#Part 2, Question 3: adding in a legend to differentiate between prediction intervals and confidence intervals
+* Part 1: My function doesn't work properly. I'm having the most issues with my normal distribution requirements and having a warning come up if it doesn't follow a normal distributio
+* Part 2, Question 1: There is probably a better way to add the equation to the graph, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+* Part 2, Question 3: I can't seem to figure out a way to add a legend to differentiate between prediction intervals and confidence intervals in the plots
+* Part 2, Question 3: The prediction intervals for my log LR do not show up nicely on my plot, I'm not sure why
