@@ -1,0 +1,236 @@
+---
+title: "langley1_OriginalHomeworkCode_04"
+output: html_document
+---
+***
+
+### HW 4: "What's your Malfunction?"
+
+***
+
+Loading in the Kamilar and Cooper Dataset
+```{r}
+library(curl)
+KC <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN597_Fall19/KamilarAndCooperData.csv")
+KC <- read.csv(KC, header = TRUE, sep = ",", stringsAsFactors = FALSE)
+head(KC)
+names(KC)
+```
+
+Assigning variables to the Data columns I want to look at
+```{r}
+max_l<- KC$MaxLongevity_m
+max_l
+mean_bs<- KC$Brain_Size_Species_Mean
+mean_bs
+```
+
+***
+
+## Part 1: Write a simple R function, Z.prop.test(), that can perform one- or two-sample Z-tests for proportion data
+
+***
+
+```{r}
+z.prop.test<- function(p1, p0, n1, n2=NULL, p2=NULL, a=0.05, alternative = "two.sided", norm.distri.1 = "TRUE", norm.distri.2 = "TRUE", conf.level=0.95)
+{
+    q<- 1-p1
+    z.one.samp<- (p1 - p0)/(sqrt(p1 * q/ n1)) #The formula for a one sampled test
+    z.two.samp<- ((p1 - p2) - 0)/(sqrt(sd(p1)^2/n1)+(sd(p2)^2/n2)) #The formula for a two sampled       test
+    z = qnorm(1-a/2) #needed for my confidence interval formula
+    conf.int<- p1 + c(-1,1)*z*sqrt(p1*(1-p1)/n)
+    m.p1<- mean(p1) #calculating mean to use for my p-value
+    s.p1<- sd(p1) #sd to use for my p-value
+    z <- (m.p1-p1)/(s.p1/sqrt(n1)) #first part of equation for p-value
+    p.value<- 2*pnorm(-abs(z)) #to find p-value
+    if (alternative == "two.sided"){
+        return(z.one.samp)
+    } 
+    else if (alternative == "less" & p2 != "NULL" &n2 != "NULL"){
+        return(z.two.samp) #should this p1 and p2 be means??
+    } 
+    else if (alternative == "greater" & p2 != "NULL" &n2 != "NULL"){
+        return(z.two.samp)
+    } 
+    if (conf.level == 0.95){
+        return(conf.int)
+    }
+    if (n1*p1 >5 & n1*(1-p1) >5 & p2 == "NULL" & n2 == "NULL"){
+        return(z.one.samp)
+    } 
+    if (n1*p1 >5 & n1*(1-p1) >5 & p2 != "NULL" & n2 != "NULL"){
+        return(z.two.samp)
+    } 
+    if(n1*p1 < 5 & n1*(1-p1) < 5){
+        return(warning("normal distribution violated")) #I can't get this warning to work...
+    }
+    multi_return <- function() {
+    my_list <- list("Z1" = z.one.samp, "Z2" = z.two.samp, "p-value" = p, "CI" = conf.intsize)
+    return(my_list)
+    }
+}
+
+
+TEST<- z.prop.test(p1=0.70, p0=.50, n1=100)
+TEST 
+Test2<- z.prop.test(p1=0.70, p0=0.50, n1=100, n2=500, p2=0.30, alternative = "less", conf.level = 0.95)
+Test2 #Got an "NA" for this one...
+Test3<- z.prop.test(p1=0.70, p0=0.50, n1=2) #setting my valules to purposefully violate the normal distribution in order to try to get the warning message, but it doesn't work!!
+Test3
+```
+
+***
+
+## Part 2: Longevity and Brain Size Linear Regression
+
+***
+
+# Question 1: Fit the regression model and, using {ggplot2}, produce a scatterplot with the fitted line superimposed upon the data. Append the the fitted model equation to your plot 
+
+Fitting these variables to a linear regression
+```{r}
+lm1<- lm(data=KC, max_l ~ mean_bs)
+lm1
+head(lm1$model)
+summary(lm1)
+```
+
+Using ggplot to create a scatterplot with fitted line and lm equation 
+```{r}
+library(ggplot2)
+
+plot1 <- ggplot(data = KC, aes(x = mean_bs, y = max_l))
+plot1 <- plot1 + labs(x= "Mean Brain Size", y= "Longevity")
+plot1 <- plot1 + geom_point()
+plot1 <- plot1 + geom_smooth(method = "lm", formula = y ~ x, se=FALSE) #geom_smooth puts in 95% confidence intervals automatically into the graph, by setting se = F, you can remove these CI (I'm removing them because the question doesn't specfically ask for them)
+plot1 <- plot1 + geom_text(aes(label = "y%==%1.22%*%x + 248.952", x=200, y=800), parse = TRUE, check_overlap = TRUE, size= 5) #I used ?plotmath to see the appropriate syntax to use in order to write out the equation in the label() function
+plot1
+```
+
+Now doing it over again for log(longevity) and log(brain size)
+```{r}
+lm2<- lm(data=KC, log(max_l) ~ log(mean_bs))
+lm2 
+head(lm2$model)
+summary(lm2)
+```
+
+Scatterplot with equation for log LR
+```{r}
+plot2 <- ggplot(data = KC, aes(x = log(mean_bs), y = log(max_l)))
+plot2 <- plot2 + labs(x= "Log(Mean Brain Size)", y= "Log(Longevity)")
+plot2 <- plot2 + geom_point()
+plot2 <- plot2 + geom_smooth(method = "lm", formula = y ~ x, se = FALSE) #geom_smooth puts in 95% confidence intervals automatically into the graph, by setting se = F, you can remove these CI
+plot2 <- plot2 + geom_text(aes(label = "y%==%0.234%*%x + 4.879", x=2.5, y=7), parse = TRUE, check_overlap = TRUE, size= 6)
+plot2
+```
+
+# Question 2: Identify and interpret the point estimate of the slope (β1), as well as the outcome of the test associated with the hypotheses H0: β1 = 0; HA: β1 ≠ 0. Also, find a 90 percent CI for the slope (β1) parameter.
+
+The point estimate of the slope
+```{r}
+summary(lm1)
+#slope = 1.2180
+# intercept = #248.952
+
+#My interpretation: for every added month to someone's life, their brain size is 1.218 grams bigger on average; 248.952 months of the average person's life doesn't depend on their mean brain size (?)
+
+#H0: β1 = 0 --> x= 0, y= 248.952
+#HA: β1 ≠ 0 --> what we see when we plot the linear regression?? 
+
+lm1_ci<- confint(lm1, level = 0.90)
+lm1_ci #CI for slope= 1.035571, 1.40041
+```
+
+For the log linear regression
+```{r}
+summary(lm2)
+slope #0.23415
+intercepts #4.87895
+
+lm2_ci<- confint(lm2, level = 0.90)
+lm2_ci #CI for slope= 0.2046, 0.2637
+```
+
+# Question 3: Using your model, add lines for the 90 percent confidence and prediction interval bands on the plot and add a legend to differentiate between the lines.
+
+```{r}
+lm1_pi <- predict(lm1, newdata = data.frame(mean_bs = KC$Brain_Size_Species_Mean), interval = "prediction", level = 0.90)  #for a vector of mean_bs values
+head(lm1_pi)
+
+nrow(lm1_pi)
+nrow(KC) #checking the number of rows in these to make sure they're the same, the cbind() in my next line won't work if they have different number of rows
+
+new_df<- cbind(KC, lm1_pi) #binding my main data object KC with my new lm1_pi variable
+new_df
+
+plot3<- ggplot(new_df, aes(mean_bs, max_l))+
+    geom_point() +
+    labs(x= "Mean Brain Size", y= "Longevity") +
+    geom_line(aes(y=lwr), color = "red", linetype = "dashed")+
+    geom_line(aes(y=upr), color = "red", linetype = "dashed")+
+    geom_smooth(method=lm, level = 0.90)+ #geom_smooth automatically puts in 95% CI so I need to change it to 90%
+    theme(legend.position = c(0.95, 0.95)) #hmm there still is no legend...
+plot3
+```
+
+Now doing it for my log linear regression
+```{r}
+lm2_pi <- predict(lm2, newdata = data.frame(mean_bs = KC$Brain_Size_Species_Mean), interval = "prediction", level = 0.90)  # for a vector of mean_bs values
+head(lm2_pi)
+
+nrow(lm2_pi)
+nrow(KC) #checking the number of rows in these to make sure they're the same, the cbind() in my next line won't work if they have different number of rows
+
+new_df_log<- cbind(KC, lm2_pi) #binding my main data object KC with my new lm1_pi variable
+
+plot4<- ggplot(new_df_log, aes(mean_bs, max_l))+
+    geom_point()+
+    labs(x= "Log(Mean Brain Size)", y= "Log(Longevity)") +
+    geom_line(aes(y=lwr), color = "blue", linetype = "dashed")+
+    geom_line(aes(y=upr), color = "blue", linetype = "dashed")+
+    geom_smooth(method=lm, level = 0.90) #geom_smooth automatically puts in 95% CI so I need to change it to 90%
+plot4 
+```
+
+# Question 4: Produce a point estimate and associated 90 percent PI for the longevity of a species whose brain weight is 800 gm. Do you trust the model to predict observations accurately for this value of the explanatory variable? Why or why not?
+
+```{r}
+new.dat <- data.frame(mean_bs=800)
+predict(lm1, newdata = new.dat, interval = 'predict', level = 0.90)
+#point estimate = 1223.345
+#lower/upper = 1021.805, 1424.884
+
+#The prediction intervals are always going to be wider than the confidence intervals. They are predicting the range for longevity when mean brain size = 800 grams. The value for longevity when brain size = 800 grams will fall in this range 90% of the time. When looking at the graph, you see most of the data falls between the 0-200 range for brain size so maybe a prediction for 800 gms will be more difficult because there is not as much data to base it on. 
+
+```
+
+***
+
+## My Challenges
+
+***
+
+* Part 1: My function doesn't work properly. I think I have the right start but I'm stuck moving forward. Tricky!!
+* Part 2, Question 1: There is probably a better way to add the equation to the graph, I tried making the slope and the intercept into variables "m" and "b" and then put them into the label() but that just spit out mx + b onto my plot and didn't actually show the numbers
+* Part 2, Question 3: I can't seem to figure out a way to add a legend to differentiate between prediction intervals and confidence intervals in the plots. Usually you can add one in when you categorize different variables from your data using the aes() function (i.e. breaking them up by color, age, etc.), which isn't exactly the case for this so that's probably why it's not working
+* Part 2, Question 3: The prediction intervals for my log LR do not show up nicely on my plot, I'm not sure why. Are we even supposed to plot the CI and PI for the log LR? The question doesn't specify..
+
+
+
+## Peer Commentary 
+1. This is really great! Your annotations are straightforward and easy to follow.
+
+2. In truth, I did not get past the confidence intervals so I can't really help with any of your challenges.
+
+3. I think most people got through the function just couldn't make it work all the way. I think this is something I'd definitely like to go through in class. 
+
+4. I think the difficulty plotting the PI comes from not getting rid of the values that are NA.
+
+5. I also could not get geom_text to work, someone else found a package to put the equation on the plot, but I couldn't figure out a way to use geom_text specifically. 
+
+
+
+
+
+
